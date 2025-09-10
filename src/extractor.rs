@@ -22,7 +22,7 @@ impl PdfExtractor {
     pub fn new(args: Args) -> Self {
         Self {
             pdf_processor: PdfProcessor::new(),
-            ocr_processor: OcrProcessor::new(args.text_only),
+            ocr_processor: OcrProcessor::new(args.text_only, args.use_gpu),
             args,
         }
     }
@@ -259,7 +259,7 @@ impl PdfExtractor {
         Self {
             args: self.args.clone(),
             pdf_processor: PdfProcessor::new(),
-            ocr_processor: OcrProcessor::new(self.args.text_only),
+            ocr_processor: OcrProcessor::new(self.args.text_only, self.args.use_gpu),
         }
     }
 }

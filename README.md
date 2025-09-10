@@ -56,6 +56,9 @@ cargo build --release
 # OCR only (skip direct text extraction) - best for image-based PDFs
 ./target/release/pdf-ocr-extractor --ocr-only
 
+# GPU-accelerated OCR (fastest for image-based PDFs)
+./target/release/pdf-ocr-extractor --ocr-only --use-gpu
+
 # Custom input directory
 ./target/release/pdf-ocr-extractor --input-dir /path/to/pdfs
 
@@ -114,6 +117,7 @@ make help          # Show available commands
 make build         # Build binaries
 make run           # Extract with 4 threads
 make run-fast      # Extract with all CPU cores
+make run-gpu-ocr   # GPU-accelerated OCR
 make stats         # Show database statistics
 make search QUERY="keyword"  # Search text
 make db            # Open database in GUI browser

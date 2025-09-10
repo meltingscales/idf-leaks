@@ -41,4 +41,8 @@ pub struct Args {
     /// Show verbose output
     #[arg(short, long)]
     pub verbose: bool,
+    
+    /// Use GPU acceleration for OCR (requires OpenCL/CUDA support)
+    #[arg(long)]
+    pub use_gpu: bool,
 }

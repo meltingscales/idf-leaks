@@ -4,11 +4,12 @@ use log::{info, warn, error};
 
 pub struct OcrProcessor {
     text_only: bool,
+    use_gpu: bool,
 }
 
 impl OcrProcessor {
-    pub fn new(text_only: bool) -> Self {
-        Self { text_only }
+    pub fn new(text_only: bool, use_gpu: bool) -> Self {
+        Self { text_only, use_gpu }
     }
     
     /// Perform OCR on PDF file
@@ -99,12 +100,24 @@ impl OcrProcessor {
     async fn ocr_image(&self, image_path: &Path) -> Result<String> {
         use tokio::process::Command;
         
-        let output = Command::new("tesseract")
-            .args([
-                image_path.to_str().unwrap(),
-                "stdout",
-                "-l", "eng",
-            ])
+        let mut cmd = Command::new("tesseract");
+        cmd.args([
+            image_path.to_str().unwrap(),
+            "stdout",
+            "-l", "eng",
+        ]);
+        
+        // Add GPU acceleration if enabled
+        if self.use_gpu {
+            cmd.args([
+                "--oem", "1",  // Use LSTM OCR Engine Mode (supports GPU)
+                "--psm", "3",  // Fully automatic page segmentation
+                "-c", "use_opencl=1",  // Enable OpenCL acceleration
+            ]);
+            info!("Using GPU acceleration for OCR");
+        }
+        
+        let output = cmd
             .output()
             .await
             .context("Failed to run tesseract")?;
@@ -145,6 +158,28 @@ impl OcrProcessor {
         
         if !pdftoppm_available {
             error!("pdftoppm not found. Install with: apt install poppler-utils");
+        }
+        
+        // Check GPU support if requested
+        if self.use_gpu && tesseract_available {
+            match tokio::process::Command::new("tesseract")
+                .args(["--print-parameters", "2>/dev/null"])
+                .output()
+                .await
+            {
+                Ok(output) => {
+                    let params = String::from_utf8_lossy(&output.stdout);
+                    if params.contains("use_opencl") {
+                        info!("GPU acceleration available via OpenCL");
+                    } else {
+                        warn!("GPU acceleration requested but OpenCL support not found in Tesseract");
+                        warn!("Install Tesseract with OpenCL support for GPU acceleration");
+                    }
+                }
+                Err(_) => {
+                    warn!("Could not check Tesseract GPU capabilities");
+                }
+            }
         }
         
         tesseract_available && pdftoppm_available

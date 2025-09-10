@@ -1,4 +1,4 @@
-.PHONY: help build install run run-fast run-fast-ocr clean test stats search export-txt bench db
+.PHONY: help build install run run-fast run-fast-ocr run-gpu-ocr clean test stats search export-txt bench db
 
 # Default target
 help:
@@ -9,6 +9,7 @@ help:
 	@echo "  run          - Extract text from all PDFs (4 threads)"
 	@echo "  run-fast     - Extract with maximum threads (CPU count)"
 	@echo "  run-fast-ocr - Extract with maximum threads using OCR only"
+	@echo "  run-gpu-ocr  - Extract with GPU acceleration (requires OpenCL/CUDA)"
 	@echo "  stats        - Show database statistics"
 	@echo "  search       - Search extracted text"
 	@echo "  export-txt   - Export database to text file"
@@ -23,6 +24,7 @@ help:
 	@echo "For faster processing:"
 	@echo "  make run-fast       # Direct text + OCR fallback"
 	@echo "  make run-fast-ocr   # OCR only (better for image PDFs)"
+	@echo "  make run-gpu-ocr    # GPU-accelerated OCR (fastest for image PDFs)"
 
 # Install system dependencies
 install:
@@ -49,6 +51,12 @@ run-fast-ocr: build
 	@echo "Running PDF OCR extraction with maximum threads (OCR only)..."
 	@echo "⚠️  This will be slower but more accurate for image-based PDFs"
 	./target/release/pdf-ocr-extractor --threads $$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) --ocr-only --force
+
+# Run with GPU acceleration for OCR
+run-gpu-ocr: build
+	@echo "Running PDF OCR extraction with GPU acceleration..."
+	@echo "🚀 Using GPU acceleration with OpenCL (requires compatible GPU and drivers)"
+	./target/release/pdf-ocr-extractor --threads $$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) --ocr-only --use-gpu --force
 
 # Show database statistics
 stats: build
