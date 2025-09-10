@@ -1,4 +1,4 @@
-.PHONY: help build install run clean test stats search export-txt bench
+.PHONY: help build install run run-fast run-fast-ocr clean test stats search export-txt bench db
 
 # Default target
 help:
@@ -8,9 +8,11 @@ help:
 	@echo "  install      - Install system dependencies"
 	@echo "  run          - Extract text from all PDFs (4 threads)"
 	@echo "  run-fast     - Extract with maximum threads (CPU count)"
+	@echo "  run-fast-ocr - Extract with maximum threads using OCR only"
 	@echo "  stats        - Show database statistics"
 	@echo "  search       - Search extracted text"
 	@echo "  export-txt   - Export database to text file"
+	@echo "  db           - Open database in GUI browser"
 	@echo "  clean        - Remove generated files and build artifacts"
 	@echo "  test         - Run tests"
 	@echo "  bench        - Run benchmarks"
@@ -19,7 +21,8 @@ help:
 	@echo "  make install && make build && make run"
 	@echo ""
 	@echo "For faster processing:"
-	@echo "  make run-fast"
+	@echo "  make run-fast       # Direct text + OCR fallback"
+	@echo "  make run-fast-ocr   # OCR only (better for image PDFs)"
 
 # Install system dependencies
 install:
@@ -41,6 +44,12 @@ run-fast: build
 	@echo "Running PDF OCR extraction with maximum threads..."
 	./target/release/pdf-ocr-extractor --threads $$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
+# Run with maximum threads using OCR only (no direct text extraction)
+run-fast-ocr: build
+	@echo "Running PDF OCR extraction with maximum threads (OCR only)..."
+	@echo "⚠️  This will be slower but more accurate for image-based PDFs"
+	./target/release/pdf-ocr-extractor --threads $$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) --ocr-only --force
+
 # Show database statistics
 stats: build
 	@echo "Showing database statistics..."
@@ -60,12 +69,20 @@ export-txt: build
 	@echo "Exporting database to text file..."
 	./target/release/pdf-ocr-extractor --export-txt extracted_text_all_pdfs.txt
 
+# Open database in GUI browser
+db:
+	@echo "Opening database in GUI browser..."
+	@if [ ! -f pdf_extractions.db ]; then \
+		echo "Database not found. Run 'make run' first to create it."; \
+		exit 1; \
+	fi
+	sqlitebrowser pdf_extractions.db &
+
 # Clean up generated files and build artifacts
 clean:
 	@echo "Cleaning up..."
 	rm -f extracted_text_all_pdfs.txt
 	rm -f pdf_extractions.db
-	cargo clean
 
 # Run tests
 test:

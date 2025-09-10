@@ -30,6 +30,10 @@ pub struct Args {
     #[arg(long)]
     pub text_only: bool,
     
+    /// Skip direct text extraction and only use OCR
+    #[arg(long)]
+    pub ocr_only: bool,
+    
     /// Force re-processing of already processed files
     #[arg(long)]
     pub force: bool,

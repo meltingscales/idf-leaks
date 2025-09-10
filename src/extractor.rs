@@ -112,49 +112,76 @@ impl PdfExtractor {
             // This would require database access - simplified for now
         }
         
-        // Try direct text extraction first
-        let (text, page_count, method) = match self.pdf_processor.extract_text_direct(pdf_path) {
-            Ok((text, page_count)) => {
-                if self.pdf_processor.has_extractable_text(&text) {
-                    info!("Extracted text directly from {}", relative_path);
-                    (text, page_count, "direct".to_string())
-                } else {
-                    // Fall back to OCR
-                    match self.ocr_processor.extract_text_ocr(pdf_path).await {
-                        Ok((ocr_text, ocr_page_count)) => {
-                            info!("Used OCR for {}", relative_path);
-                            (ocr_text, ocr_page_count, "ocr".to_string())
-                        }
-                        Err(e) => {
-                            warn!("OCR failed for {}: {}", relative_path, e);
-                            (text, page_count, "direct_partial".to_string())
+        // Choose extraction method based on flags
+        let (text, page_count, method) = if self.args.ocr_only {
+            // Skip direct extraction, use OCR only
+            match self.ocr_processor.extract_text_ocr(pdf_path).await {
+                Ok((ocr_text, ocr_page_count)) => {
+                    info!("Used OCR only for {}", relative_path);
+                    (ocr_text, ocr_page_count, "ocr".to_string())
+                }
+                Err(e) => {
+                    error!("OCR extraction failed for {}: {}", relative_path, e);
+                    return Ok(ExtractionResult {
+                        id: None,
+                        file_path: relative_path,
+                        file_hash: Some(file_hash),
+                        file_size,
+                        extraction_method: "error".to_string(),
+                        extracted_text: String::new(),
+                        page_count: 0,
+                        processing_time_seconds: start_time.elapsed().as_secs_f64(),
+                        timestamp: chrono::Utc::now(),
+                        success: false,
+                        error_message: Some(format!("OCR failed: {}", e)),
+                    });
+                }
+            }
+        } else {
+            // Try direct text extraction first (default behavior)
+            match self.pdf_processor.extract_text_direct(pdf_path) {
+                Ok((text, page_count)) => {
+                    if self.pdf_processor.has_extractable_text(&text) {
+                        info!("Extracted text directly from {}", relative_path);
+                        (text, page_count, "direct".to_string())
+                    } else {
+                        // Fall back to OCR
+                        match self.ocr_processor.extract_text_ocr(pdf_path).await {
+                            Ok((ocr_text, ocr_page_count)) => {
+                                info!("Used OCR for {}", relative_path);
+                                (ocr_text, ocr_page_count, "ocr".to_string())
+                            }
+                            Err(e) => {
+                                warn!("OCR failed for {}: {}", relative_path, e);
+                                (text, page_count, "direct_partial".to_string())
+                            }
                         }
                     }
                 }
-            }
-            Err(e) => {
-                // Try OCR as last resort
-                match self.ocr_processor.extract_text_ocr(pdf_path).await {
-                    Ok((ocr_text, ocr_page_count)) => {
-                        info!("Used OCR after direct extraction failed for {}", relative_path);
-                        (ocr_text, ocr_page_count, "ocr".to_string())
-                    }
-                    Err(ocr_e) => {
-                        error!("Both direct and OCR extraction failed for {}: direct={}, ocr={}", 
-                               relative_path, e, ocr_e);
-                        return Ok(ExtractionResult {
-                            id: None,
-                            file_path: relative_path,
-                            file_hash: Some(file_hash),
-                            file_size,
-                            extraction_method: "error".to_string(),
-                            extracted_text: String::new(),
-                            page_count: 0,
-                            processing_time_seconds: start_time.elapsed().as_secs_f64(),
-                            timestamp: chrono::Utc::now(),
-                            success: false,
-                            error_message: Some(format!("Direct: {}, OCR: {}", e, ocr_e)),
-                        });
+                Err(e) => {
+                    // Try OCR as last resort
+                    match self.ocr_processor.extract_text_ocr(pdf_path).await {
+                        Ok((ocr_text, ocr_page_count)) => {
+                            info!("Used OCR after direct extraction failed for {}", relative_path);
+                            (ocr_text, ocr_page_count, "ocr".to_string())
+                        }
+                        Err(ocr_e) => {
+                            error!("Both direct and OCR extraction failed for {}: direct={}, ocr={}", 
+                                   relative_path, e, ocr_e);
+                            return Ok(ExtractionResult {
+                                id: None,
+                                file_path: relative_path,
+                                file_hash: Some(file_hash),
+                                file_size,
+                                extraction_method: "error".to_string(),
+                                extracted_text: String::new(),
+                                page_count: 0,
+                                processing_time_seconds: start_time.elapsed().as_secs_f64(),
+                                timestamp: chrono::Utc::now(),
+                                success: false,
+                                error_message: Some(format!("Direct: {}, OCR: {}", e, ocr_e)),
+                            });
+                        }
                     }
                 }
             }

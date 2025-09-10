@@ -53,6 +53,9 @@ cargo build --release
 # Text extraction only (no OCR)
 ./target/release/pdf-ocr-extractor --text-only
 
+# OCR only (skip direct text extraction) - best for image-based PDFs
+./target/release/pdf-ocr-extractor --ocr-only
+
 # Custom input directory
 ./target/release/pdf-ocr-extractor --input-dir /path/to/pdfs
 
@@ -80,7 +83,29 @@ cargo build --release
 
 # Export to JSON
 ./target/release/pdf-query export results.json
+
+# Open database in GUI browser (NixOS)
+make db
 ```
+
+### GUI Database Browser
+
+When using NixOS with the provided `shell.nix`, you get access to **SQLite Browser** - a popular GUI tool for exploring SQLite databases:
+
+```bash
+# Quick access via Makefile
+make db
+
+# Or run directly  
+sqlitebrowser pdf_extractions.db
+```
+
+The GUI browser allows you to:
+- **Browse tables** and view extraction results
+- **Run custom SQL queries** on the data
+- **Export data** in various formats (CSV, JSON, etc.)
+- **Visualize extraction statistics** and patterns
+- **Edit data** if needed
 
 ### Using Makefile
 
@@ -91,6 +116,7 @@ make run           # Extract with 4 threads
 make run-fast      # Extract with all CPU cores
 make stats         # Show database statistics
 make search QUERY="keyword"  # Search text
+make db            # Open database in GUI browser
 make clean         # Remove build artifacts
 make test          # Run tests
 make bench         # Run benchmarks
