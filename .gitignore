@@ -1,7 +1,8 @@
-.venv/
-.claude/
 *.7z
 IDF Papers/
 extract*.txt
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
+target/

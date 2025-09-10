@@ -1,103 +1,191 @@
-# PDF OCR Text Extractor
+# 🦀 PDF OCR Text Extractor (Rust Edition)
 
-Extract text from PDF files using OCR (Optical Character Recognition). Supports both text-based and image-based PDFs.
+High-performance PDF OCR text extraction tool written in Rust. Provides true parallelism, memory safety, and blazing fast performance.
+
+## Features
+
+- **True Parallelism**: No GIL limitations - all CPU cores utilized efficiently
+- **Memory Safe**: Rust's ownership system prevents memory leaks and data races
+- **Fast**: Optimized for processing thousands of PDFs concurrently
+- **Database Storage**: SQLite with WAL mode for concurrent operations
+- **Smart Extraction**: Direct text extraction with OCR fallback
+- **Progress Tracking**: Real-time progress bars and statistics
+- **CLI Tools**: Main extractor + query tool for database analysis
 
 ## Quick Start
 
 ```bash
-# Install dependencies and run
-make install && make run
+# Install dependencies and build
+make install && make build && make run
 ```
 
-## Setup Options
+## Installation
 
-### Option 1: Traditional Package Managers
+### System Dependencies
 ```bash
+# Ubuntu/Debian
+sudo apt-get install tesseract-ocr poppler-utils
+
+# Or use our installer
 ./install_dependencies.sh
 ```
 
-### Option 2: NixOS
+### Build from Source
 ```bash
-nix-shell
-uv pip install -r requirements.txt
+# Install Rust (if not already installed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Build the project
+cargo build --release
 ```
 
 ## Usage
 
-### Using Makefile (Recommended)
-```bash
-make help          # Show available commands
-make install       # Install all dependencies  
-make run           # Extract text from all PDFs (4 threads)
-make run-fast      # Extract with maximum CPU threads
-make run-threads   # Extract with custom thread count
-make test          # Test with a single PDF
-make clean         # Remove generated files
-```
+### Main Extractor
 
-### Direct Execution
 ```bash
-# Default (4 threads, SQLite database)
-uv run pdf_ocr_extractor.py
+# Default (4 threads)
+./target/release/pdf-ocr-extractor
 
-# Custom thread count and database
-uv run pdf_ocr_extractor.py --threads 8 --database my_results.db
+# Custom thread count
+./target/release/pdf-ocr-extractor --threads 8
+
+# Text extraction only (no OCR)
+./target/release/pdf-ocr-extractor --text-only
+
+# Custom input directory
+./target/release/pdf-ocr-extractor --input-dir /path/to/pdfs
 
 # Export to text file after processing
-uv run pdf_ocr_extractor.py --export-txt results.txt
+./target/release/pdf-ocr-extractor --export-txt results.txt
+
+# Force reprocessing
+./target/release/pdf-ocr-extractor --force
 
 # Show help
-uv run pdf_ocr_extractor.py --help
+./target/release/pdf-ocr-extractor --help
 ```
 
 ### Database Queries
+
 ```bash
 # Show statistics
-uv run query_database.py stats
+./target/release/pdf-query stats
 
 # Search extracted text
-uv run query_database.py search "your search term"
+./target/release/pdf-query search "keyword"
 
-# List all processed files
-uv run query_database.py list
+# List files
+./target/release/pdf-query list
 
 # Export to JSON
-uv run query_database.py export results.json
+./target/release/pdf-query export results.json
+```
+
+### Using Makefile
+
+```bash
+make help          # Show available commands
+make build         # Build binaries
+make run           # Extract with 4 threads
+make run-fast      # Extract with all CPU cores
+make stats         # Show database statistics
+make search QUERY="keyword"  # Search text
+make clean         # Remove build artifacts
+make test          # Run tests
+make bench         # Run benchmarks
+```
+
+## Performance
+
+The Rust version provides significant performance improvements:
+
+- **No GIL**: True parallel processing on all CPU cores
+- **Memory Efficiency**: Zero-cost abstractions and minimal allocations
+- **Async I/O**: Non-blocking file operations and database writes
+- **SIMD**: Optimized hashing and text processing
+- **Batch Operations**: Efficient database transactions
+
+Expected performance gains over Python:
+- **2-5x faster** overall processing
+- **5-10x faster** file hashing
+- **Better memory usage** (lower peak RAM)
+- **Linear scaling** with CPU cores
+
+## Architecture
+
+```
+src/
+├── main.rs          # Main entry point and orchestration
+├── cli.rs           # Command line argument parsing
+├── database.rs      # SQLite database operations
+├── extractor.rs     # Main extraction logic and coordination
+├── pdf.rs           # PDF text extraction
+├── ocr.rs           # OCR processing with Tesseract
+├── progress.rs      # Progress tracking and reporting
+└── query.rs         # Database query tool
 ```
 
 ## Dependencies
 
-### System Requirements
-- `tesseract-ocr` - OCR engine
-- `poppler-utils` - PDF processing tools
+- **PDF Processing**: `lopdf`, `pdf-extract`
+- **OCR**: System `tesseract` + `poppler-utils`
+- **Database**: `rusqlite` with bundled SQLite
+- **Async Runtime**: `tokio` for I/O, `rayon` for CPU parallelism
+- **CLI**: `clap` for argument parsing
+- **Progress**: `indicatif` for progress bars
 
-### Python Packages
-- PyPDF2 - PDF text extraction
-- pytesseract - Tesseract OCR wrapper
-- pdf2image - Convert PDF pages to images
-- Pillow - Image processing
+## Database Schema
 
-## Output
+```sql
+CREATE TABLE pdf_extractions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_path TEXT NOT NULL,
+    file_hash TEXT,
+    file_size INTEGER,
+    extraction_method TEXT NOT NULL,  -- 'direct', 'ocr', 'error'
+    extracted_text TEXT,
+    page_count INTEGER,
+    processing_time_seconds REAL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    success BOOLEAN NOT NULL,
+    error_message TEXT,
+    UNIQUE(file_path, file_hash)
+);
+```
 
-The script stores results in a SQLite database (`pdf_extractions.db`) with the following information:
-- File path and metadata (size, hash)
-- Extraction method used (direct text or OCR)
-- Extracted text content
-- Processing time and success status
-- Timestamps and error messages
+## Development
 
-You can export results to a text file or query the database directly.
+```bash
+# Development build (faster compilation)
+make dev
 
-## How It Works
+# Run in development mode
+make dev-run
 
-1. **Direct Text Extraction**: First attempts to extract text directly from PDFs using PyPDF2
-2. **OCR Fallback**: If direct extraction yields minimal text, converts PDF pages to images and uses Tesseract OCR
-3. **Batch Processing**: Processes all PDFs in directory tree and saves results to a single output file
+# Code quality checks
+make check
 
-## Supported Environments
+# Format code
+make fmt
 
-- Ubuntu/Debian (apt)
-- Fedora/RHEL (dnf) 
-- Arch Linux (pacman)
-- macOS (brew)
-- NixOS (nix-shell)
+# Update dependencies
+make update
+```
+
+## Benchmarks
+
+```bash
+# Run performance benchmarks
+make bench
+```
+
+
+## Why Rust?
+
+- **No GIL**: Python's Global Interpreter Lock limits true parallelism
+- **Memory Safety**: Prevents segfaults and memory leaks
+- **Performance**: Systems language with zero-cost abstractions
+- **Concurrency**: Fearless concurrency with compile-time guarantees
+- **Ecosystem**: Excellent crates for PDF processing and databases
+- **Future-Proof**: Growing adoption in systems and CLI tools

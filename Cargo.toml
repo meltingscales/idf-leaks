@@ -1,0 +1,58 @@
+[package]
+name = "pdf-ocr-extractor"
+version = "0.1.0"
+edition = "2021"
+authors = ["PDF OCR Extractor"]
+description = "High-performance PDF OCR text extraction tool"
+license = "MIT"
+
+[[bin]]
+name = "pdf-ocr-extractor"
+path = "src/main.rs"
+
+[[bin]]
+name = "pdf-query"
+path = "src/query.rs"
+
+[dependencies]
+# CLI and args
+clap = { version = "4.0", features = ["derive"] }
+anyhow = "1.0"
+
+# Async runtime and concurrency  
+tokio = { version = "1.0", features = ["rt-multi-thread", "fs", "process", "macros", "sync"] }
+rayon = "1.7"
+
+# PDF processing
+pdf-extract = "0.7"
+lopdf = "0.32"
+
+# Image processing and temp files
+tempfile = "3.0"
+
+# Database
+rusqlite = { version = "0.29", features = ["bundled"] }
+
+# Serialization and hashing
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+
+# File handling and paths
+walkdir = "2.3"
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging (simplified)
+env_logger = "0.10"
+log = "0.4"
+
+# Progress bars
+indicatif = "0.17"
+
+[dev-dependencies]
+tempfile = "3.0"
+criterion = "0.5"
+
+# [[bench]]
+# name = "extraction_benchmark"
+# harness = false

@@ -1,90 +1,105 @@
-.PHONY: help install run clean test
+.PHONY: help build install run clean test stats search export-txt bench
 
 # Default target
 help:
-	@echo "PDF OCR Extractor - Available targets:"
+	@echo "🦀 PDF OCR Extractor (Rust Edition) - Available targets:"
 	@echo ""
-	@echo "  install      - Install dependencies (system + Python)"
+	@echo "  build        - Build the Rust binaries"
+	@echo "  install      - Install system dependencies"
 	@echo "  run          - Extract text from all PDFs (4 threads)"
-	@echo "  run-threads  - Extract with custom thread count"
 	@echo "  run-fast     - Extract with maximum threads (CPU count)"
 	@echo "  stats        - Show database statistics"
 	@echo "  search       - Search extracted text"
 	@echo "  export-txt   - Export database to text file"
-	@echo "  clean        - Remove generated output files"
-	@echo "  test         - Test OCR on a single PDF"
-	@echo "  nix          - Enter Nix shell environment"
+	@echo "  clean        - Remove generated files and build artifacts"
+	@echo "  test         - Run tests"
+	@echo "  bench        - Run benchmarks"
 	@echo ""
 	@echo "Quick start:"
-	@echo "  make install && make run"
+	@echo "  make install && make build && make run"
 	@echo ""
-	@echo "Database queries:"
-	@echo "  make stats"
-	@echo "  make search QUERY='your search term'"
+	@echo "For faster processing:"
+	@echo "  make run-fast"
 
-# Install all dependencies
+# Install system dependencies
 install:
-	@echo "Installing dependencies..."
+	@echo "Installing system dependencies..."
 	./install_dependencies.sh
 
+# Build Rust binaries
+build:
+	@echo "Building Rust binaries..."
+	cargo build --release
+
 # Run the OCR extractor (default 4 threads)
-run:
+run: build
 	@echo "Running PDF OCR extraction with 4 threads..."
-	uv run pdf_ocr_extractor.py --threads 4
+	./target/release/pdf-ocr-extractor --threads 4
 
-# Run with custom thread count
-run-threads:
-	@echo "Running PDF OCR extraction with custom thread count..."
-	@read -p "Enter number of threads (default 4): " threads; \
-	threads=$${threads:-4}; \
-	echo "Using $$threads threads..."; \
-	uv run pdf_ocr_extractor.py --threads $$threads
-
-# Run with maximum threads (CPU count)
-run-fast:
+# Run with maximum threads
+run-fast: build
 	@echo "Running PDF OCR extraction with maximum threads..."
-	uv run pdf_ocr_extractor.py --threads $$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+	./target/release/pdf-ocr-extractor --threads $$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 # Show database statistics
-stats:
+stats: build
 	@echo "Showing database statistics..."
-	uv run query_database.py stats
+	./target/release/pdf-query stats
 
 # Search extracted text
-search:
+search: build
 	@echo "Searching extracted text..."
 	@if [ -z "$(QUERY)" ]; then \
 		echo "Usage: make search QUERY='your search term'"; \
 	else \
-		uv run query_database.py search "$(QUERY)"; \
+		./target/release/pdf-query search "$(QUERY)"; \
 	fi
 
 # Export database to text file
-export-txt:
+export-txt: build
 	@echo "Exporting database to text file..."
-	uv run pdf_ocr_extractor.py --export-txt extracted_text_all_pdfs.txt --database pdf_extractions.db
+	./target/release/pdf-ocr-extractor --export-txt extracted_text_all_pdfs.txt
 
-# Clean up generated files
+# Clean up generated files and build artifacts
 clean:
-	@echo "Cleaning up generated files..."
+	@echo "Cleaning up..."
 	rm -f extracted_text_all_pdfs.txt
-	rm -f test_output.txt
 	rm -f pdf_extractions.db
-	rm -rf __pycache__/
-	rm -rf .pytest_cache/
+	cargo clean
 
-# Test with a single PDF (if available)
+# Run tests
 test:
-	@echo "Testing OCR on first available PDF..."
-	@if [ -f "IDF Papers/*/document.pdf" ]; then \
-		echo "Testing with first PDF found..."; \
-		uv run -c "import sys; sys.path.append('.'); from pdf_ocr_extractor import extract_text_from_pdf; pdf_path = next(iter(__import__('glob').glob('IDF Papers/*/document.pdf')), None); print(f'Testing: {pdf_path}') if pdf_path else print('No PDFs found'); result = extract_text_from_pdf(pdf_path)[:500] + '...' if pdf_path else 'No test performed'; print(result)" > test_output.txt; \
-		echo "Test output saved to test_output.txt"; \
-	else \
-		echo "No PDF files found for testing"; \
-	fi
+	@echo "Running tests..."
+	cargo test
 
-# Enter Nix shell (for NixOS users)
-nix:
-	@echo "Entering Nix shell environment..."
-	nix-shell
+# Run benchmarks
+bench:
+	@echo "Running benchmarks..."
+	cargo bench
+
+# Development build (faster compile)
+dev:
+	@echo "Building in development mode..."
+	cargo build
+
+# Run in development mode
+dev-run: dev
+	@echo "Running in development mode..."
+	./target/debug/pdf-ocr-extractor --threads 2 --verbose
+
+# Check code quality
+check:
+	@echo "Checking code..."
+	cargo check
+	cargo clippy -- -D warnings
+	cargo fmt --check
+
+# Format code
+fmt:
+	@echo "Formatting code..."
+	cargo fmt
+
+# Update dependencies
+update:
+	@echo "Updating dependencies..."
+	cargo update

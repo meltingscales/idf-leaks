@@ -2,28 +2,37 @@
 
 pkgs.mkShell {
   buildInputs = with pkgs; [
-    # System dependencies
+    # System dependencies for OCR
     tesseract
     poppler_utils
     
-    # Python and uv
-    python3
-    uv
+    # Rust toolchain
+    cargo
+    rustc
+    rustfmt
+    clippy
+    
+    # Build tools
+    gcc
+    pkg-config
     
     # Additional utilities
     file
   ];
 
   shellHook = ''
-    echo "PDF OCR extraction environment loaded!"
+    echo "🦀 PDF OCR Extractor (Rust Edition) - Nix Environment"
+    echo "=================================================="
     echo ""
     echo "Available tools:"
     echo "  - tesseract: $(tesseract --version | head -1)"
     echo "  - poppler: $(pdftoppm -h 2>&1 | head -1 || echo 'poppler installed')"
-    echo "  - python: $(python --version)"
-    echo "  - uv: $(uv --version)"
+    echo "  - rust: $(rustc --version)"
+    echo "  - cargo: $(cargo --version)"
     echo ""
-    echo "To install Python dependencies: uv pip install -r requirements.txt"
-    echo "To run the extractor: python pdf_ocr_extractor.py"
+    echo "Quick start:"
+    echo "  make build    # Build the Rust binaries"
+    echo "  make run      # Extract text from PDFs"
+    echo "  make help     # Show all commands"
   '';
 }
